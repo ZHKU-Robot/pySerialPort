@@ -16,39 +16,102 @@ class SerialPortWindow(QWidget):
         self.initSerialPort()
         self.initIcon()
         self.initAction()
-        self.initMenuBar()
+        self.initButton()
+        self.initLabel()
         self.initCombox()
+        self.initTextInput()
         self.initMainBoxLayout()
-
-        # self.initButton()
 
         #
         self.moveCenter()
         self.initMain()
         self.show()
+    def initTextInput(self):
+        self.acceptedTextInput=QTextEdit()
+        self.acceptedTextInput.setMinimumHeight(20)
+        self.acceptedTextInput.setText(str(self.accNum))
 
-    def initSerialPort(self):
-        self.curSerPort = serial.tools.list_ports.comports()
-
-    def initCombox(self):
-        self.combo = QComboBox(self)
-        for port in self.curSerPort:
-            self.combo.addItem(port)
-    def initconfigBoxLayout(self):
-
-        self.configBoxLayout = QVBoxLayout()
-
-        self.configGridLayout=QGridLayout()
-        self.configBoxLayout.addLayout(self.configGridLayout)
-
+        self.sendedTextInput=QTextEdit()
+        self.sendedTextInput.setMinimumHeight(20)
+        self.sendedTextInput.setText(str(self.senNum))
+    def initLabel(self):
         self.comx=QLabel("COMX:")
-        self.configGridLayout.addWidget(self.comx,0,0)
-        self.configGridLayout.addWidget(self.combo,0,1)
+        self.baud = QLabel("baud:")
+        self.bytesize=QLabel("bytesize:")
+        self.parity=QLabel("parity:")
+        self.stopbits=QLabel("stopbits:")
+        self.accepted = QLabel("accepted:")
+        self.accNum=0
+        self.sended = QLabel("sended:  ")
+        self.senNum=0
+    def initSerialPort(self):
+        self.ports=mySerial.checkPorts()
+        # self.port=mySerial.Port()
+    def freshCombox(self):
+        ports = mySerial.checkPorts()
+        self.comboPort.clear()
+        for port in ports:
+            self.comboPort.addItem(port)
+        self.ports=ports
+    def initCombox(self):
+        self.comboPort = QComboBox(self)
+        self.comboBaud= QComboBox(self)
+        self.comboBaud.addItems([str(i) for i in [50,75,110,134,150,200,300,600,1200,1800,2400,4800,9600,19200,38400,57600,115200][::-1]])
+        self.comboByteSizes= QComboBox(self)
+        self.comboByteSizes.addItems([str(i) for i in [5,6,7,8][::-1]])
+        self.comboParity= QComboBox(self)
+        self.comboParity.addItem('N')
+        self.comboStopbits= QComboBox(self)
+        self.comboStopbits.addItem('1')
+
+
+
+    def initconfigBoxLayout(self):
+        self.configBoxLayout = QVBoxLayout()
+        self.configGridLayout=QGridLayout()
+        self.configBoxLayout.setStretchFactor(self.configGridLayout,11)
+        self.configBoxLayout.setSpacing(10)
+        self.configGridLayout.setHorizontalSpacing(10)
+        self.configGridLayout.setVerticalSpacing(20)
+        self.configBoxLayout.addLayout(self.configGridLayout)
+        self.configGridLayout.setSpacing(20)
+
+        self.configGridLayout.addWidget(self.comboPort,0,1)
+        self.configGridLayout.addWidget(self.checkPortBtn,0,0)
+        self.configGridLayout.addWidget(self.baud,1,0)
+        self.configGridLayout.addWidget(self.comboBaud, 1, 1)
+        self.configGridLayout.addWidget(self.bytesize,2,0)
+        self.configGridLayout.addWidget(self.comboByteSizes, 2, 1)
+        self.configGridLayout.addWidget(self.parity,3,0)
+        self.configGridLayout.addWidget(self.comboParity,3,1)
+        self.configGridLayout.addWidget(self.stopbits,4,0)
+        self.configGridLayout.addWidget(self.comboStopbits, 4, 1)
+        self.configGridLayout.addWidget(self.openPortBtn,5,0)
+        self.configGridLayout.addWidget(self.closePortBtn,5,1)
+        #
+
+        self.displayBoxLayout=QVBoxLayout()
+        self.configBoxLayout.setStretchFactor(self.displayBoxLayout,2)
+        self.configBoxLayout.addLayout(self.displayBoxLayout)
+
+        self.acceptedGridLayout=QGridLayout()
+
+        self.acceptedGridLayout.addWidget(self.accepted,0,0)
+
+        self.acceptedGridLayout.addWidget(self.acceptedTextInput,0,1)
+        self.sendedGridLayout = QGridLayout()
+        self.sendedGridLayout.addWidget(self.sended,1,0)
+        self.sendedGridLayout.addWidget(self.sendedTextInput,1,1)
+
+        self.displayBoxLayout.addLayout(self.acceptedGridLayout)
+        self.displayBoxLayout.addLayout(self.sendedGridLayout)
+
+
 
     def initfigureBoxLayout(self):
         self.figureBoxLayout = QVBoxLayout()
-
-
+        self.figureBoxLayout.addWidget(QLabel("figure"))
+        self.figureBoxLayout.addWidget(QLabel("figure"))
         self.figureBoxLayout.addWidget(QLabel("figure"))
 
 
@@ -71,8 +134,15 @@ class SerialPortWindow(QWidget):
         self.setLayout(self.mainBoxLayout)
 
     def initButton(self):
-        qbtn = QPushButton('Quit', self)
-        qbtn.clicked.connect(QCoreApplication.instance().quit)
+        # self.qbtn = QPushButton('Quit', self)
+        # self.qbtn.clicked.connect(QCoreApplication.instance().quit)
+        #
+        self.checkPortBtn = QPushButton("check-COMX",self)
+        self.checkPortBtn.setStatusTip('Check port')
+        self.checkPortBtn.clicked.connect(self.freshCombox)
+
+        self.openPortBtn=QPushButton("open",self)
+        self.closePortBtn = QPushButton("close", self)
 
     # def closeEvent(self, event) -> None:
     #     reply = QMessageBox.question(self, '求你了,再学一会吧',"你想被兴爷吊打吗?再学会吧..", QMessageBox.Yes |QMessageBox.No, QMessageBox.No)
@@ -98,6 +168,7 @@ class SerialPortWindow(QWidget):
         self.exitAct.setShortcut('Ctrl+Q')
         self.exitAct.setStatusTip('Exit application')
         self.exitAct.triggered.connect(self.close)
+
 
     def initMain(self):
         # self.setCentralWidget(QLabel("SERIAL PORT ASSISTANT"))
@@ -130,7 +201,3 @@ if __name__ == '__main__':
 #         self.show()
 
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = Example()
-    sys.exit(app.exec_())

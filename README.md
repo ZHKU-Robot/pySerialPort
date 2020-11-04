@@ -5,6 +5,24 @@
 
 正在学习,估计这几天能做出来
 
+## Warning
+
+![1604462655234](img/1604462655234.png)
+
+### 立刻马上停止直接用pyqt5写！！
+
+**不要像我一样直接用python api 去写，你会崩溃的，幸好qt带了qt转pyqt的功能。**
+
+*我们只需要写对应的功能即可*
+
+### SO
+*现在立刻马上去用QT!!*
+
+![1604463614022](img/1604463614022.png)
+
+[具体可见](https://blog.csdn.net/qq_23237491/article/details/90711138)
+
+
 ## Table of Contents
 
 - [Update](#Update)
@@ -28,13 +46,19 @@
 
 ## Background
 
-### I LOVE MR.HE
+### FUCK UP
 
 ## Install
+
+- PyQt5
 
 ```
 pip3 install -i http://mirrors.aliyun.com/pypi/simple/ PyQt5 PyQt5-tools --trusted-host mirrors.aliyun.com
 ```
+
+- QT
+
+    [https://mirrors.tuna.tsinghua.edu.cn/qt/archive/qt/5.9/5.9.9/qt-opensource-windows-x86-5.9.9.exe](https://mirrors.tuna.tsinghua.edu.cn/qt/archive/qt/5.9/5.9.9/qt-opensource-windows-x86-5.9.9.exe)
 
 ## Usage
 

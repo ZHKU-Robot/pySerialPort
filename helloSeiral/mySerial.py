@@ -4,7 +4,8 @@ import threading
 import time
 # 返回 成功读入的字节数
 
-
+def checkPorts():
+    return [sp.device for sp in serial.tools.list_ports.comports()]
 class Port:
     def __init__(self, portname: str, bps: int, maxtime: int):
         # 波特率，标准值之一：
@@ -42,8 +43,7 @@ class Port:
         # 关闭串口
         self.ser.close()  # 关闭串口
         print("serial port closed")
-    def checkPorts(self):
-        return [sp.device for sp in serial.tools.list_ports.comports()]
+
     # 读取字节数和方式  默认utf8解码
     def help(self):
         # 打印能使用的方法
