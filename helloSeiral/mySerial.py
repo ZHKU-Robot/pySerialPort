@@ -2,38 +2,48 @@ import serial  # 导入模块
 import serial.tools.list_ports
 import threading
 import time
+
+
 # 返回 成功读入的字节数
 
 def checkPorts():
     return [sp.device for sp in serial.tools.list_ports.comports()]
+
+
 class Port:
-    def __init__(self, portname: str, bps: int, maxtime: int):
+    def __init__(self, portname: str, bps: int, maxtime: int, bytesize: int, parity: str, stopbits: int):
         # 波特率，标准值之一：
         # 超时设置,None：永远等待操作，0为立即返回请求结果，其他值为等待超时时间(单位为秒）
         # 打开串口，并得到串口对象
-        if(portname.upper() not in self.checkPorts()):
+        if (portname.upper() not in checkPorts()):
             raise Exception("cant connect to serial port")
-        self.ser = serial.Serial(portname, bps, timeout=maxtime)
-        self.encoding='gbk'
-        self.decoding='gbk'
+        self.ser = serial.Serial(portname, bps, timeout=maxtime,
+                                 bytesize={5: serial.FIVEBITS, 6: serial.SIXBITS, 7: serial.SEVENBITS,
+                                           8: serial.EIGHTBITS}[bytesize], parity=
+                                 {'none': serial.PARITY_NONE, 'even': serial.PARITY_EVEN, 'odd': serial.PARITY_ODD,
+                                  'mark': serial.PARITY_MARK, 'space': serial.PARITY_SPACE}[parity], stopbits=
+                                 {1: serial.STOPBITS_ONE, 1.5: serial.STOPBITS_ONE_POINT_FIVE, 2: serial.STOPBITS_TWO}[
+                                     stopbits])
+        self.encoding = 'gbk'
+        self.decoding = 'gbk'
         if (self.ser.is_open):
             # 读取数据
             # 详细参数
             print(self.ser)
-            print("your serial port had been opened \n whose info will be showed next ..")
+            print("your serial port had been opened  whose info will be showed next ..")
 
-            print("your device named",self.ser.name)  # 设备名字
-            print("port type is",self.ser.port)  # 读或者写端口
+            print("your device named", self.ser.name)  # 设备名字
+            print("port type is", self.ser.port)  # 读或者写端口
             print('your baud is', self.ser.baudrate)
-            print("bytesize is",self.ser.bytesize)  # 字节大小
-            print("parity is",self.ser.parity)  # 校验位
-            print("stopbits is",self.ser.stopbits)  # 停止位
-            print("timeout is",self.ser.timeout)  # 读超时设置
-            print("writeTimeout is",self.ser.writeTimeout)  # 写超时
-            print("xonxoff is",self.ser.xonxoff)  # 软件流控
-            print("rtscts is ",self.ser.rtscts)  # 软件流控
-            print("dsrdtr is",self.ser.dsrdtr)  # 硬件流控
-            print("interCharTimeout",self.ser.interCharTimeout)  # 字符间隔超时
+            print("bytesize is", self.ser.bytesize)  # 字节大小
+            print("parity is", self.ser.parity)  # 校验位
+            print("stopbits is", self.ser.stopbits)  # 停止位
+            print("timeout is", self.ser.timeout)  # 读超时设置
+            print("writeTimeout is", self.ser.writeTimeout)  # 写超时
+            print("xonxoff is", self.ser.xonxoff)  # 软件流控
+            print("rtscts is ", self.ser.rtscts)  # 软件流控
+            print("dsrdtr is", self.ser.dsrdtr)  # 硬件流控
+            print("interCharTimeout", self.ser.interCharTimeout)  # 字符间隔超时
             print('your serial port is', self.ser.port)
 
         else:
@@ -45,6 +55,28 @@ class Port:
         print("serial port closed")
 
     # 读取字节数和方式  默认utf8解码
+    def getInfo(self):
+        return f"""your serial port had been opened  whose info will be showed next .." \n
+                "your device named", {self.ser.name} \n
+               "port type is", {self.ser.port}\n
+               'your baud is', {self.ser.baudrate}\n
+               "bytesize is", {self.ser.bytesize}\n
+               "parity is", {self.ser.parity}\n
+               "stopbits is", {self.ser.stopbits}\n
+               "timeout is", {self.ser.timeout}\n
+               "writeTimeout is", {self.ser.writeTimeout}\n
+               "xonxoff is", {self.ser.xonxoff}\n
+               "rtscts is ", {self.ser.rtscts}\n
+               "interCharTimeout", {self.ser.interCharTimeout}\n
+               'your serial port is', {self.ser.port}"""
+
+
+
+
+
+
+
+
     def help(self):
         # 打印能使用的方法
         # print(ser.read())#读一个字节
@@ -101,16 +133,16 @@ class Port:
             return self.ser.read(num).hex()
         elif options == "text":
             return self.ser.read(num).decode(self.decoding)
-        elif options=='oct':
-            return int(self.ser.read(num).hex(),16)
-        elif options=="all":
+        elif options == 'oct':
+            return int(self.ser.read(num).hex(), 16)
+        elif options == "all":
             pass
         else:
             raise Exception("please input right format like hex or text or oct")
 
     def getWholeData(self, options='text'):
-        print("current input buffer size is",self.ser.in_waiting)
-        self.wholeData= self.readData(self.ser.in_waiting, options=options)
+        print("current input buffer size is", self.ser.in_waiting)
+        self.wholeData = self.readData(self.ser.in_waiting, options=options)
         print("whole data is")
         print(self.wholeData)
         return self.wholeData
