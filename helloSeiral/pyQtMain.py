@@ -56,7 +56,6 @@ class SerialPortWindow(QWidget):
     def initCombox(self):
         self.comboPort = QComboBox(self)
         self.comboBaud= QComboBox(self)
-        self.comboBaud.addItems([str(i) for i in [50,75,110,134,150,200,300,600,1200,1800,2400,4800,9600,19200,38400,57600,115200][::-1]])
         self.comboByteSizes= QComboBox(self)
         self.comboByteSizes.addItems([str(i) for i in [5,6,7,8][::-1]])
         self.comboParity= QComboBox(self)
