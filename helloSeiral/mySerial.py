@@ -15,8 +15,7 @@ class Port:
         # 波特率，标准值之一：
         # 超时设置,None：永远等待操作，0为立即返回请求结果，其他值为等待超时时间(单位为秒）
         # 打开串口，并得到串口对象
-        if (portname.upper() not in checkPorts()):
-            raise Exception("cant connect to serial port")
+
         self.ser = serial.Serial(portname, bps, timeout=maxtime,
                                  bytesize={5: serial.FIVEBITS, 6: serial.SIXBITS, 7: serial.SEVENBITS,
                                            8: serial.EIGHTBITS}[bytesize], parity=
@@ -49,10 +48,6 @@ class Port:
         else:
             raise Exception("serial port error!")
 
-    def __del__(self):
-        # 关闭串口
-        self.ser.close()  # 关闭串口
-        print("serial port closed")
 
     # 读取字节数和方式  默认utf8解码
     def getInfo(self):
@@ -132,7 +127,10 @@ class Port:
         if options == "hex":
             return self.ser.read(num).hex()
         elif options == "text":
-            return self.ser.read(num).decode(self.decoding)
+            try:
+                return self.ser.read(num).decode(self.decoding)
+            except UnicodeDecodeError:
+                return False
         elif options == 'oct':
             return int(self.ser.read(num).hex(), 16)
         elif options == "all":
@@ -141,25 +139,33 @@ class Port:
             raise Exception("please input right format like hex or text or oct")
 
     def getWholeData(self, options='text'):
-        print("current input buffer size is", self.ser.in_waiting)
+        time.sleep(0.1)
         self.wholeData = self.readData(self.ser.in_waiting, options=options)
-        print("whole data is")
-        print(self.wholeData)
-        return self.wholeData
+        if(self.wholeData):
+            # print("whole data is")
+            print(self.wholeData)
+            return self.wholeData
+    def hangThread2ReadData(self,options):
+        print("-------- start hanging to read data -------- ")
+        while(self.hang):
+            self.getWholeData(options)
+
+
+
 
     def writeData(self, string: str) -> int:
         # 返回成功传入的字数
         num = self.ser.write(string.encode(self.encoding))
         print("writed {} bytes!".format(num))
-        time.sleep(0.1)
         return num
 
     # 默认开启线程
     def readDataByThtead(self, options='text', thread=True):
         self.wholeData = ''
+        self.hang=1
         # 循环接收数据，此为死循环，可用线程实现
         if (thread):
-            th = threading.Thread(target=self.getWholeData(), name='getWholedata', args=(options, self.decoding))
+            th = threading.Thread(target=self.hangThread2ReadData, name='getWholedata', args=([options]))
             th.start()
         else:
-            self.getWholeData(options, self.decoding)
+            self.getWholeData(options)

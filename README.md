@@ -2,48 +2,15 @@ pyserial+qt+pyqt5实现py上位机
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
-支持兴爷,说到上位机,就是应用层面了,我就感兴趣了,刚好python也容易写这种东西
+**聪聪串口助手beta版0.1**
 
-正在学习,估计这几天能做出来
-
-## Warning
-
-![1604462655234](img/1604462655234.png)
-
-### 立刻马上停止直接用pyqt5写！！
-
-![1604463827147](img/1604463827147.png)
-
-**不要像我一样直接用python api 去写，你会崩溃的，像上图一样幸好qt带了qt转pyqt的功能。**
-
-*我们只需要写对应的功能即可*
-
-像下图这样
-
-![1604506939959](img/1604506939959.png)
-
-### SO
-*现在立刻马上去用QT!!*
-
-![1604463614022](img/1604463614022.png)
-
-*使用qt designer即可,不需要配环境*
-
-![1604465702679](img/1604465702679.png)
-
-
-
-待更新
-
-[具体可见](https://blog.csdn.net/qq_23237491/article/details/90711138)
+![1604662980405](img/1604662980405.png)
 
 
 ## Table of Contents
 
 - [pyserial实现py上位机](#pyserial实现py上位机)
-  - [Warning](#warning)
-    - [立刻马上停止直接用pyqt5写！！](#立刻马上停止直接用pyqt5写)
-    - [SO](#so)
+  - [TODO](#TODO)
   - [Table of Contents](#table-of-contents)
   - [Update](#update)
   - [Requirement](#requirement)
@@ -58,8 +25,13 @@ pyserial+qt+pyqt5实现py上位机
   - [Contributing](#contributing)
   - [License](#license)
 
+## TODO
+
+进入绘图阶段
+
 ## Update
 
+- 2020年11月6日19:43:13 update 测试版beta0.1
 - 2020年11月3日23:10:59 更新readme
 
 ## Requirement
@@ -89,48 +61,11 @@ pip3 install -i http://mirrors.aliyun.com/pypi/simple/ PyQt5 PyQt5-tools --trust
 git clone https://github.com/ZHKU-Robot/pySerialPort.git
 ```
 
-## Example
+Example
 
-```python
-import mySerial
-myPort=mySerial.Port("com9",115200,1)
-print(myPort.checkPorts())
-myPort.writeData("wdnmd\r\n")
-myPort.getWholeData()
-```
+![1604663052645](img/1604663052645.png)
 
-```python
-Serial<id=0x1e196103888, open=True>(port='com9', baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1, xonxoff=False, rtscts=False, dsrdtr=False)
-your serial port had been opened 
- whose info will be showed next ..
-your device named com9
-port type is com9
-your baud is 115200
-bytesize is 8
-parity is N
-stopbits is 1
-timeout is 1
-writeTimeout is None
-xonxoff is False
-rtscts is  False
-dsrdtr is False
-interCharTimeout None
-your serial port is com9
-['COM9']
-writed 7 bytes!
-current input buffer size is 27
-whole data is
-
-wdnmd
-
-
-serial port closed
-
-Process finished with exit code 0
-
-```
-
-
+![1604663063530](img/1604663063530.png)
 
 ## API
 
