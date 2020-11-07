@@ -1,47 +1,106 @@
 import sys
 import time
 
-from PyQt5.QtGui import QIcon, QTextCursor
+import numpy as np
+from PyQt5 import sip
+from PyQt5.QtCore import QObject, QTimer
+from PyQt5.QtGui import QIcon, QTextCursor, QCloseEvent
 from PyQt5.QtWidgets import QApplication, QMessageBox, QDialog, QWidget
 from PyQt5.QtWidgets import QMainWindow
 from PyQt5.uic.properties import QtGui
-
+from QplotThread import Pic
 from mainwindow import Ui_MainWindow  # 加载我们的布局
 from dialog import Ui_AboutRobot
 import mySerial
 import threading
 import matplotlib
-matplotlib.use("Qt5Agg")  # 声明使用QT5
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+matplotlib.use("Qt5Agg")  # 声明使用pyqt5
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg  # pyqt5的画布
 import matplotlib.pyplot as plt
-import numpy as np
-#创建一个matplotlib图形绘制类
-class MyFigure(FigureCanvas):
-    def __init__(self,width=5, height=4, dpi=100):
-        #第一步：创建一个创建Figure
-        self.fig = Figure(figsize=(width, height), dpi=dpi)
-        #第二步：在父类中激活Figure窗口
-        super(MyFigure,self).__init__(self.fig) #此句必不可少，否则不能显示图形
-        #第三步：创建一个子图，用于绘制图形用，111表示子图编号，如matlab的subplot(1,1,1)
-        self.axes = self.fig.add_subplot(111)
+from matplotlib.figure import Figure
+from matplotlib.animation import FuncAnimation
+
+
+class MyMatPlotAnimation(FigureCanvasQTAgg):
+    """
+    创建一个画板类，并把画布放到容器（画板上）FigureCanvasQTAgg，再创建一个画图区
+    """
+
+    def __init__(self, width=10, heigh=10, dpi=100):
+        # 创建一个Figure,该Figure为matplotlib下的Figure，不是matplotlib.pyplot下面的Figure
+        self.figs = Figure(figsize=(width, heigh), dpi=dpi)
+        super(MyMatPlotAnimation, self).__init__(self.figs)
+        self.figs.patch.set_facecolor('#01386a')  # 设置绘图区域颜色
+        self.axes = self.figs.add_subplot(111)
+        self.startIndex=0
+        self.endIndex=5
+        self.step=0.01
+        self.t = np.array(np.arange(0, 5, self.step))
+
+
+
+    def set_mat_func(self,s):
+        """
+        初始化设置函数
+        """
+        self.s =np.cos(self.t*np.pi*s)
+        self.axes.cla()
+        self.axes.patch.set_facecolor("#01386a")  # 设置ax区域背景颜色
+        self.axes.patch.set_alpha(0.5)  # 设置ax区域背景颜色透明度
+
+        # self.axes.spines['top'].set_color('#01386a')
+        self.axes.spines['top'].set_visible(False)  # 顶边界不可见
+        self.axes.spines['right'].set_visible(False)  # 右边界不可见
+
+        self.axes.xaxis.set_ticks_position('bottom')  # 设置ticks（刻度）的位置为下方
+        self.axes.yaxis.set_ticks_position('left')  # 设置ticks（刻度） 的位置为左侧
+        # 设置左、下边界在（0，0）处相交
+        # self.axes.spines['bottom'].set_position(('data', 0))  # 设置x轴线再Y轴0位置
+        self.axes.spines['left'].set_position(('data', 0))  # 设置y轴在x轴0位置
+        self.axes.set_ylim([-180,180])
+        self.plot_line, = self.axes.plot([], [], 'r-', linewidth=1)  # 注意‘,’不可省略
+
+
+    def plot_tick(self):
+        plot_line = self.plot_line
+        plot_axes = self.axes
+        t = self.t
+
+        def upgrade(i):  # 注意这里是plot_tick方法内的嵌套函数
+            x_data = []  # 这里注意如果是使用全局变量self定义，可能会导致绘图首位相联
+            y_data = []
+            for i in range(len(t)):
+                x_data.append(i)
+                y_data.append(self.s[i])
+            plot_axes.plot(x_data, y_data, 'r-', linewidth=1)
+            return plot_line,  # 这里也是注意‘,’不可省略，否则会报错
+
+        ani = FuncAnimation(self.figs, upgrade, blit=True, repeat=False)
+        self.figs.canvas.draw()  # 重绘还是必须要的
+        self.t=np.hstack([self.t[1:],[self.t[-1]+self.step]])
+
+
+
     #第四步：就是画图，【可以在此类中画，也可以在其它类中画】
-    def plotsin(self):
-        self.axes0 = self.fig.add_subplot(111)
-        t = np.arange(0.0, 3.0, 0.01)
-        s = np.sin(2 * np.pi * t)
-        self.axes0.plot(t, s)
-    def plotcos(self):
-        t = np.arange(0.0, 3.0, 0.01)
-        s = np.sin(2 * np.pi * t)
-        self.axes.plot(t, s)
+    # def plot
+    # def plotsin(self):
+    #     self.axes0 = self.fig.add_subplot(111)
+    #     t = np.arange(0.0, 3.0, 0.01)
+    #     s = np.sin(2 * np.pi * t)
+    #     self.axes0.plot(t, s)
+    # def plotcos(self):
+    #     t = np.arange(0.0, 3.0, 0.01)
+    #     s = np.sin(2 * np.pi * t)
+    #     self.axes.plot(t, s)
 
 class ErrorMessage():
     def __init__(self, qWindow):
         self.qMainWindow = qWindow
 
     def warning(self, title, content):
-        QMessageBox.warning(self.qMainWindow, title, content, QMessageBox.Ok, QMessageBox.Ok)
+        QMessageBox.warning(self.qMainWindow, title, content)
+
+
 
     def QMessageBox(self):
         self.qMainWindow.qmb = QMessageBox()
@@ -67,6 +126,7 @@ class AboutDialog(Ui_AboutRobot,QDialog,QWidget):
 
 class UsingTest(QMainWindow, Ui_MainWindow):
     def __init__(self, *args, **kwargs):
+
         super(UsingTest, self).__init__(*args, **kwargs)
         self.setupUi(self)  # 初始化ui
         self.initIcon()
@@ -74,8 +134,101 @@ class UsingTest(QMainWindow, Ui_MainWindow):
         self.initCombox()
         self.freshCombox()
         self.initButton()
+        self.figureInit()
         self.initMain()
+    def openMyPort(self):
 
+        if not self.open:
+            comx = self.comxCombo.currentText().lower()
+            baud = eval(self.baudCombo.currentText())
+            maxtime = eval(self.timeoutSpinBox.text())
+            bytesize = eval(self.bytesizeCombo.currentText())
+            parity = self.parityCombo.currentText()
+            stopbit = eval(self.stopbitsCombo.currentText())
+            try:
+                self.myPort = mySerial.Port(comx, baud, maxtime, bytesize, parity, stopbit)
+            except Exception as e:
+                self.errorMessageBox.warning(str(e), "参数设置错误,无法打开串口")
+                return
+            # TODO 有bug,放进线程会崩掉
+            for i in range(101):
+                self.progressBar.setValue(i)
+                time.sleep(0.01)
+                self.progressBar.setFormat("正在为您打开串口{}%(✪ω✪)".format(self.progressBar.value()))
+            self.progressBar.setFormat("串口打开成功 (*^▽^*)")
+            th = threading.Thread(target=self.listenAcceptedData, name='getWholedata',
+                                  )
+            th.start()
+            #TODO 有bug这里
+            self.closebtn.released.connect(self.closeSerialPort)
+            self.debugTextBrowserInit()
+        else:
+            self.errorMessageBox.QMessageBox()
+
+        self.open=self.myPort.ser.is_open
+    def closeSerialPort(self):
+        self.debugtextBrowser.append(str(self.myPort.ser.is_open))
+        if  self.myPort.ser.is_open:
+            self.autosend = 0
+
+            self.open=False
+            self.progressBar.setValue(0)
+            self.progressBar.setFormat("等待你的再次打开么么哒(づ￣ 3￣)づ")
+            self.myPort.ser.close()
+            self.rollfigure.startTimer(1000)
+
+
+
+        else:
+            self.errorMessageBox.warning("请先打开串口", '我求你了')
+        self.closebtn.released.disconnect(self.closeSerialPort)
+        self.closebtn.released.connect(self.closeSerialPort)
+
+    def getMCU8050Data(self):
+        if(self.tabWidget.currentIndex()==1):
+            if(self.open==1):
+                mpuData=self.myPort.decodeMPU6050(self.data)
+                if mpuData:
+                    for singleMpudata in mpuData:
+
+                        # print(singleMpudata)
+                        self.rollfigure.set_mat_func(singleMpudata[-3] )
+                        self.rollfigure.plot_tick()
+                        # self.rollfigure
+                        # time.sleep(0.1)
+                        self.timer.start(10)
+            else:
+                # time.sleep(1)
+                pass
+        else:
+            pass
+    def figureDraw(self):
+        if(self.tabWidget.currentIndex()==1):
+            #自动切换
+            if(self.open==1):
+                self.hexRadioButton.setChecked(1)
+                self.textRadioButtonChange()
+                self.timer=QTimer(self)
+                self.timer.timeout.connect(self.getMCU8050Data)
+                self.timer.start(10)
+                # threading.Thread(target=self.getMCU8050Data).start()
+            else:
+                QMessageBox.warning(self, '串口未打开', '串口未打开ε＝ε＝ε＝(#>д<)ﾉ')
+        else:
+            pass
+
+
+    def figureInit(self):
+        self.tabWidget.currentChanged.connect(self.figureDraw)
+        self.rollfigure = MyMatPlotAnimation(width=5, heigh=4, dpi=100)
+        self.pitchfigure =MyMatPlotAnimation(width=5, heigh=4, dpi=100)
+        self.yawfigure = MyMatPlotAnimation(width=5, heigh=4, dpi=100)
+
+        self.rollLayout.addWidget(self.rollfigure)
+        self.pitchLayout.addWidget(self.pitchfigure)
+        self.yawLayout.addWidget(self.yawfigure)
+    def textRadioButtonChange(self):
+        self.opDict = {'hex': self.hexRadioButton.isChecked(), 'text': self.textRadioButton_2.isChecked(), }
     def aboutDialog(self):
         about = AboutDialog()
         about.setWindowIcon(self.winIcon)
@@ -83,15 +236,9 @@ class UsingTest(QMainWindow, Ui_MainWindow):
         about.setModal(1)
         about.exec_()
 
-    def closeSerialPort(self):
-        if self.open:
-            self.myPort.ser.close()
-            self.open = self.myPort.ser.is_open
-            self.autosend = 0
-            self.hang = 0
-        else:
-            self.errorMessageBox.warning("请先打开串口", '我求你了')
-
+    #debugtextBrower--------------------------------------
+    def debugtextBrowerSignals(self):
+        self.debugtextBrowser.moveCursor(QTextCursor.End)
     def debugTextBrowserInit(self):
         self.debugtextBrowser.setText(self.myPort.getInfo())
         self.debugtextBrowser.textChanged.connect(self.debugtextBrowerSignals)
@@ -121,37 +268,26 @@ class UsingTest(QMainWindow, Ui_MainWindow):
         else:
             self.errorMessageBox.warning('请先打开串口', '打开串口先哦')
 
-    def closeEvent(self, a0) -> None:
-        self.hang = False
-        self.autosend = 0
+
 
     # TODO 待改进
-    def debugtextBrowerSignals(self):
-
-        self.debugtextBrowser.moveCursor(QTextCursor.End)
 
     def acceptedTextBrowserSignals(self):
         self.acceptedTextBrowser.moveCursor(QTextCursor.End)
 
-    def initVar(self):
-        self.autosend = 0
-        self.open = False
-        self.errorMessageBox = ErrorMessage(self)
 
-    def listenAcceptedData(self, options):
+    def listenAcceptedData(self):
         print("-------- start hanging to read data -------- ")
         self.acceptedTextBrowser.textChanged.connect(self.acceptedTextBrowserSignals)
-        while (self.hang):
-            try:
-                data = self.myPort.getWholeData(options)
-            except Exception as e:
-                self.debugtextBrowser.append(str(e))
-            if (data):
-                self.acceptedTextBrowser.append(data)
-                self.lcdNumber.display(str(self.lcdNumber.intValue() + len(data)))
-
-            elif (data == False):
-                self.debugtextBrowser.append('sorry,爱心光波无法到达,出现了编码错误')
+        while (self.myPort.ser.is_open):
+                self.data = self.myPort.getWholeData([k for k, v in self.opDict.items() if v == True][0])
+                # time.sleep(self.interval)
+                if(type(self.data)==UnicodeDecodeError):
+                    self.debugtextBrowser.append("error.."+str (self.data))
+                else:
+                    if(self.tabWidget.currentIndex()==0):
+                        self.acceptedTextBrowser.append(str(self.data))
+                    self.lcdNumber.display(str(self.lcdNumber.intValue() + len(self.data)))
 
     def sendData2MyPort(self):
 
@@ -164,50 +300,32 @@ class UsingTest(QMainWindow, Ui_MainWindow):
         else:
             self.errorMessageBox.warning('请先打开串口', '打开串口先哦')
 
-    def openMyPort(self):
 
-        if not self.open:
-            comx = self.comxCombo.currentText().lower()
-            baud = eval(self.baudCombo.currentText())
-            maxtime = eval(self.timeoutSpinBox.text())
-            bytesize = eval(self.bytesizeCombo.currentText())
-            parity = self.parityCombo.currentText()
-            stopbit = eval(self.stopbitsCombo.currentText())
-            try:
-                self.myPort = mySerial.Port(comx, baud, maxtime, bytesize, parity, stopbit)
-            except Exception as e:
-                self.errorMessageBox.warning(str(e), "参数设置错误,无法打开串口")
-                return
 
-            self.open = self.myPort.ser.is_open
-            self.closebtn.clicked.connect(self.closeSerialPort)
-            self.debugTextBrowserInit()
-            self.opDict = {'hex': self.hexRadioButton.isChecked(), 'text': self.textRadioButton_2.isChecked(),
-                           'oct': self.octRadioButton_3.isChecked()}
-            self.hang = 1
-            th = threading.Thread(target=self.listenAcceptedData, name='getWholedata',
-                                  args=([[k for k, v in self.opDict.items() if v == True][0]]))
-            th.start()
-            self.progressBar.moveToThread(self.thread())
-            for i in range(101):
-                self.progressBar.setValue(i)
-                time.sleep(0.01)
-                self.progressBar.setFormat("正在为您打开串口{}%(✪ω✪)".format(self.progressBar.value()))
-            self.progressBar.setFormat("串口打开成功 (*^▽^*)")
-        else:
 
-            self.errorMessageBox.QMessageBox()
 
+    #
+    def freshCombox(self):
+        ports = mySerial.checkPorts()
+        self.comxCombo.clear()
+        for port in ports:
+            self.comxCombo.addItem(port)
     def initCombox(self):
         self.comxCombo.addItems(mySerial.checkPorts())
         self.baudCombo.addItems([str(i) for i in [50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800,
                                                   9600, 19200, 38400, 57600, 115200, 230400, 460800, 500000,
                                                   576000, 921600, 1000000, 1152000, 1500000, 2000000, 2500000,
                                                   3000000, 3500000, 4000000][::-1]])
-        self.baudCombo.setCurrentText('115200')
+        self.baudCombo.setCurrentText('500000')
         self.bytesizeCombo.addItems([str(i) for i in [5, 6, 7, 8][::-1]])
         self.parityCombo.addItems(['none', 'even', 'odd', 'mark', 'space'])
         self.stopbitsCombo.addItems(['1', '1.5', '2'])
+    def initVar(self):
+        self.interval=0.01
+        self.autosend = 0
+        self.open = False
+        self.errorMessageBox = ErrorMessage(self)
+        self.opDict = {'hex': self.hexRadioButton.isChecked(), 'text': self.textRadioButton_2.isChecked(), }
 
     def initButton(self):
         # self.qbtn = QPushButton('Quit', self)
@@ -223,12 +341,8 @@ class UsingTest(QMainWindow, Ui_MainWindow):
         self.autoCheckBox.stateChanged.connect(self.autoSendinit)
         self.aboutBtn.clicked.connect(self.aboutDialog)
 
-    def freshCombox(self):
-        ports = mySerial.checkPorts()
-        self.comxCombo.clear()
-        for port in ports:
-            self.comxCombo.addItem(port)
-
+        self.textRadioButton_2.clicked.connect(self.textRadioButtonChange)
+        self.hexRadioButton.clicked.connect(self.textRadioButtonChange)
     def initIcon(self):
         self.winIcon = QIcon("img/kissing_face_with_closed_eyes_128px_1214135_easyicon.net.ico")
 
@@ -241,6 +355,12 @@ class UsingTest(QMainWindow, Ui_MainWindow):
         self.setWindowTitle('SrialPort Assistant By YJC')
 
 
+    def closeEvent(self, a0) -> None:
+        self.autosend = 0
+        if getattr(self,'myPort',1)==1:
+            pass
+        else:
+            self.myPort.ser.close()
 if __name__ == '__main__':  # 程序的入口
     app = QApplication(sys.argv)
     win = UsingTest()

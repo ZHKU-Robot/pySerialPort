@@ -11,7 +11,7 @@ def checkPorts():
 
 
 class Port:
-    def __init__(self, portname: str, bps: int, maxtime: int, bytesize: int, parity: str, stopbits: int):
+    def __init__(self, portname='com9', bps=115200, maxtime=1, bytesize=8, parity='none', stopbits=1):
         # 波特率，标准值之一：
         # 超时设置,None：永远等待操作，0为立即返回请求结果，其他值为等待超时时间(单位为秒）
         # 打开串口，并得到串口对象
@@ -122,31 +122,146 @@ class Port:
         print("本类的方法")
         print(self.__dict__)
 
+    def decodeMPU6050(self, frames):
+        #     //传送数据给匿名四轴上位机软件(V2.6版本)
+        # //fun:功能字. 0XA0~0XAF
+        # //data:数据缓存区,最多28字节!!
+        # //len:data区有效数据个数
+        # void usart1_niming_report(u8 fun,u8*data,u8 len)
+        # {
+        # 	u8 send_buf[32];
+        # 	u8 i;
+        # 	if(len>28)return;	//最多28字节数据
+        # 	send_buf[len+3]=0;	//校验数置零
+        # 	send_buf[0]=0X88;	//帧头
+        # 	send_buf[1]=fun;	//功能字
+        # 	send_buf[2]=len;	//数据长度
+        # 	for(i=0;i<len;i++)send_buf[3+i]=data[i];			//复制数据
+        # 	for(i=0;i<len+3;i++)send_buf[len+3]+=send_buf[i];	//计算校验和
+        # 	for(i=0;i<len+4;i++)usart1_send_char(send_buf[i]);	//发送数据到串口1
+        # }
+        # void usart1_report_imu(short aacx,short aacy,short aacz,short gyrox,short gyroy,short gyroz,short roll,short pitch,short yaw)
+        # {
+        # 	u8 tbuf[28];
+        # 	u8 i;
+        # 	for(i=0;i<28;i++)tbuf[i]=0;//清0
+        # 	tbuf[0]=(aacx>>8)&0XFF;
+        # 	tbuf[1]=aacx&0XFF;
+        # 	tbuf[2]=(aacy>>8)&0XFF;
+        # 	tbuf[3]=aacy&0XFF;
+        # 	tbuf[4]=(aacz>>8)&0XFF;
+        # 	tbuf[5]=aacz&0XFF;
+        # 	tbuf[6]=(gyrox>>8)&0XFF;
+        # 	tbuf[7]=gyrox&0XFF;
+        # 	tbuf[8]=(gyroy>>8)&0XFF;
+        # 	tbuf[9]=gyroy&0XFF;
+        # 	tbuf[10]=(gyroz>>8)&0XFF;
+        # 	tbuf[11]=gyroz&0XFF;
+        # 	tbuf[18]=(roll>>8)&0XFF;
+        # 	tbuf[19]=roll&0XFF;
+        # 	tbuf[20]=(pitch>>8)&0XFF;
+        # 	tbuf[21]=pitch&0XFF;
+        # 	tbuf[22]=(yaw>>8)&0XFF;
+        # 	tbuf[23]=yaw&0XFF;
+        # 	usart1_niming_report(0XAF,tbuf,28);//飞控显示帧,0XAF
+        # }
+        # 将传来的16进制数组数据解码
+        # 0~2 是帧头,功能字,数据长度
+        # 31是校验和
+        # 3到30是数据,刚好0~27 28个数据, 现在只有24个数据被使用,剩余的是0
+        #frame是32的倍数
+        #如果不是88则丢弃
+        if frames!=[]:
+            find=frames.index('88')
+            if find==0:
+                return
+            frames=frames[find:]
+
+
+            frameLeng=32
+            framesNum=int(len(frames)/frameLeng)
+
+            frameList=[[int('0x'+j,16) for j in frames[i*32:i*32+32]] for i in range(framesNum)]
+            mpudata=[]
+            for frame in frameList:
+                if (frame[1] == 0xaf):  # 对应usart1_report_imu
+
+                    leng = frame[2]
+                    data = frame[0:3 + leng]
+                    #检验和
+                    checksum = frame[31]
+                    #检验
+                    if sum(data)%256==checksum:
+                        #高位aacx
+
+                        aacx=frame[3]*16+frame[4]
+                        aacy=frame[5]*16+frame[6]
+                        aacz=frame[7]*16+frame[8]
+                        gyrox=frame[9]*16+frame[10]
+                        gyroy= frame[11] * 16 + frame[12]
+                        gyroz = frame[13] * 16 + frame[14]
+                        # +7
+                        roll=(frame[21] * 16 + frame[22])/100
+                        pitch=(frame[23] * 16 + frame[24])/100
+                        yaw=(frame[25] * 16 + frame[26])/100
+                        print([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
+                        mpudata.append([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
+
+
+                else:
+                    pass
+            return mpudata
+            pass
+    def readline(self, options="text"):
+        if(self.ser.is_open):
+            if options == "hex":
+                s=self.ser.readline().hex()
+                return [s[i:i+2] for i in range(0,len(s),2)]
+            elif options == "text":
+                try:
+                    return self.ser.readline().decode(self.decoding)
+                except Exception as e:
+                    return e
+
+            elif options == "all":
+                pass
+            else:
+                raise Exception("please input right format like hex or text but no",options)
+        else:
+            return Exception("串口已关闭,你在读nm呢")
     def readData(self, num: int, options="text") -> str:
         # 选择16进制或者 10进制
-        if options == "hex":
-            return self.ser.read(num).hex()
-        elif options == "text":
-            try:
-                return self.ser.read(num).decode(self.decoding)
-            except UnicodeDecodeError:
-                return False
-        elif options == 'oct':
-            return int(self.ser.read(num).hex(), 16)
-        elif options == "all":
-            pass
+        if(self.ser.is_open):
+            if options == "hex":
+                s=self.ser.read(num).hex()
+                return [s[i:i+2] for i in range(0,len(s),2)]
+            elif options == "text":
+                try:
+                    return self.ser.read(num).decode(self.decoding)
+                except Exception as e:
+                    return e
+
+            elif options == "all":
+                pass
+            else:
+                raise Exception("please input right format like hex or text but no",options)
         else:
-            raise Exception("please input right format like hex or text or oct")
+            return Exception("串口已关闭,你在读nm呢")
 
     def getWholeData(self, options='text'):
-        time.sleep(0.1)
-        self.wholeData = self.readData(self.ser.in_waiting, options=options)
-        if(self.wholeData):
-            # print("whole data is")
-            print(self.wholeData)
+        if(self.ser.is_open):
+            time.sleep(0.1)
+            try:
+                # print(self.ser.in_waiting)
+                self.wholeData = self.readData(self.ser.in_waiting, options=options)
+            except:
+                Exception("串口已关闭,你在读nm呢")
+            # print(self.wholeData)
             return self.wholeData
+        else:
+            return Exception("串口已关闭,你在读nm呢")
     def hangThread2ReadData(self,options):
-        print("-------- start hanging to read data -------- ")
+        #priont("-------- start hanging to read data -------- ")
         while(self.hang):
             self.getWholeData(options)
 
@@ -156,7 +271,7 @@ class Port:
     def writeData(self, string: str) -> int:
         # 返回成功传入的字数
         num = self.ser.write(string.encode(self.encoding))
-        print("writed {} bytes!".format(num))
+        #priont("writed {} bytes!".format(num))
         return num
 
     # 默认开启线程
