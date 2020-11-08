@@ -172,50 +172,62 @@ class Port:
         #frame是32的倍数
         #如果不是88则丢弃
         if frames!=[]:
-            find=frames.index('88')
-            if find==0:
-                return
-            frames=frames[find:]
-
-
+            try:
+                find=frames.index('88')
+            except Exception as e:
+                return e
+            frames=frames[find:find+32]
             frameLeng=32
             framesNum=int(len(frames)/frameLeng)
 
-            frameList=[[int('0x'+j,16) for j in frames[i*32:i*32+32]] for i in range(framesNum)]
-            mpudata=[]
+            frameList=[[int('0x'+j,16) for j in frames[i*32:i*32+32]] for i in range(framesNum)][:frameLeng]
+            # mpudata=[]
             for frame in frameList:
+                #检验和不用
                 if (frame[1] == 0xaf):  # 对应usart1_report_imu
-
-                    leng = frame[2]
-                    data = frame[0:3 + leng]
+                    # print(frame[1])
+                    # leng = frame[2]
+                    # data = [abs(i) for i in frame[0:3 + leng]]
+                    # for i in range(3, 15, 2):
+                    #     if (frame[i] > 0x80):
+                    #         frame[i] = -(frame[i] - 0x80)
+                    #         frame[i + 1] = -frame[i]
+                    for i in range(21, 26, 2):
+                        if (frame[i] > 0x80):
+                            frame[i] = -(frame[i] - 0x80)
+                            # frame[i+1]=-frame[i]
+                    roll=(frame[21] * 16 + frame[22])/100
+                    pitch=(frame[23] * 16 + frame[24])/100
+                    yaw=(frame[25] * 16 + frame[26])/10
+                    return [roll,pitch,yaw]
                     #检验和
-                    checksum = frame[31]
+                    # checksum = frame[31]
                     #检验
-                    if sum(data)%256==checksum:
+                    # if sum(data)%256==checksum:
                         #高位aacx
-
-                        aacx=frame[3]*16+frame[4]
-                        aacy=frame[5]*16+frame[6]
-                        aacz=frame[7]*16+frame[8]
-                        gyrox=frame[9]*16+frame[10]
-                        gyroy= frame[11] * 16 + frame[12]
-                        gyroz = frame[13] * 16 + frame[14]
+                        # aacx=frame[3]*16+frame[4]
+                        # aacy=frame[5]*16+frame[6]
+                        # aacz=frame[7]*16+frame[8]
+                        # gyrox=frame[9]*16+frame[10]
+                        # gyroy= frame[11] * 16 + frame[12]
+                        # gyroz = frame[13] * 16 + frame[14]
                         # +7
-                        roll=(frame[21] * 16 + frame[22])/100
-                        pitch=(frame[23] * 16 + frame[24])/100
-                        yaw=(frame[25] * 16 + frame[26])/100
-                        print([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
-                        mpudata.append([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
+
+                        # print([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
+                        # print(frame[23],frame[24])
+                        # print(roll,pitch,yaw)
+                        # mpudata.append([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
 
 
                 else:
                     pass
-            return mpudata
+            # return mpudata
             pass
     def readline(self, options="text"):
         if(self.ser.is_open):
             if options == "hex":
                 s=self.ser.readline().hex()
+
                 return [s[i:i+2] for i in range(0,len(s),2)]
             elif options == "text":
                 try:

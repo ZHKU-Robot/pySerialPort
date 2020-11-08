@@ -21,7 +21,6 @@ class SerialPortWindow(QWidget):
         self.initCombox()
         self.initTextInput()
         self.initMainBoxLayout()
-
         #
         self.moveCenter()
         self.initMain()
@@ -47,12 +46,7 @@ class SerialPortWindow(QWidget):
     def initSerialPort(self):
         self.ports=mySerial.checkPorts()
         # self.port=mySerial.Port()
-    def freshCombox(self):
-        ports = mySerial.checkPorts()
-        self.comboPort.clear()
-        for port in ports:
-            self.comboPort.addItem(port)
-        self.ports=ports
+
     def initCombox(self):
         self.comboPort = QComboBox(self)
         self.comboBaud= QComboBox(self)
