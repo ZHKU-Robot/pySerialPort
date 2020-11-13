@@ -66,6 +66,8 @@ class Signal():
             this.self.errorMessageBox.QMessageBox()
 
         this.self.open = this.self.myPort.ser.is_open
+
+
     def drawSignals(this):
         if this.self.drawCheckBtn.checkState():
             this.self.draw = 1

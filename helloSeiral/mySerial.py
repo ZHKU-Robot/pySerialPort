@@ -171,52 +171,80 @@ class Port:
         # 3到30是数据,刚好0~27 28个数据, 现在只有24个数据被使用,剩余的是0
         #frame是32的倍数
         #如果不是88则丢弃
+        # print(frames)
         if frames!=[]:
             try:
                 find=frames.index('88')
             except Exception as e:
                 return e
+
             frames=frames[find:find+32]
             frameLeng=32
             framesNum=int(len(frames)/frameLeng)
 
-            frameList=[[int('0x'+j,16) for j in frames[i*32:i*32+32]] for i in range(framesNum)][:frameLeng]
+            frameList=[[bin(int('0x'+j,16)) for j in frames[i*32:i*32+32]] for i in range(framesNum)][:frameLeng]
             # mpudata=[]
-            for frame in frameList:
-                #检验和不用
-                if (frame[1] == 0xaf):  # 对应usart1_report_imu
-                    # print(frame[1])
-                    # leng = frame[2]
-                    # data = [abs(i) for i in frame[0:3 + leng]]
-                    # for i in range(3, 15, 2):
-                    #     if (frame[i] > 0x80):
-                    #         frame[i] = -(frame[i] - 0x80)
-                    #         frame[i + 1] = -frame[i]
-                    for i in range(21, 26, 2):
-                        if (frame[i] > 0x80):
-                            frame[i] = -(frame[i] - 0x80)
-                            # frame[i+1]=-frame[i]
-                    roll=(frame[21] * 16 + frame[22])/100
-                    pitch=(frame[23] * 16 + frame[24])/100
-                    yaw=(frame[25] * 16 + frame[26])/10
-                    return [roll,pitch,yaw]
-                    #检验和
-                    # checksum = frame[31]
-                    #检验
-                    # if sum(data)%256==checksum:
-                        #高位aacx
-                        # aacx=frame[3]*16+frame[4]
-                        # aacy=frame[5]*16+frame[6]
-                        # aacz=frame[7]*16+frame[8]
-                        # gyrox=frame[9]*16+frame[10]
-                        # gyroy= frame[11] * 16 + frame[12]
-                        # gyroz = frame[13] * 16 + frame[14]
-                        # +7
+            flag= bin(int('0xaf',16))
 
-                        # print([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
-                        # print(frame[23],frame[24])
-                        # print(roll,pitch,yaw)
-                        # mpudata.append([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
+            for frame in frameList:
+                # print(frame[21:27])
+                if (frame[1] ==flag):  # 对应usart1_report_imu
+                    #计算检验位
+                    checksum = int(frame[31],2)
+                    data=sum([int(i,2) for i in frame[:31]])
+                    if data% 256 == checksum:
+                        rpy=[]
+                        for i in range(21, 27, 2):
+                            sign=1
+                            low=frame[i+1][2:]
+                            high=frame[i][2:]
+
+                            while(len(low)<8):
+                                low='0'+low
+                            # print(f"如今的high={high} low={low} ")
+                            if(high[0]=='1' and len(high)==8):
+                                hlist=list(high)
+                                llist=list(low)
+                                sign=-1
+                                for h in range(len(high)):
+                                    if(high[h]=='1'):
+                                        hlist[h]='0'
+                                    else:
+                                        hlist[h]='1'
+                                for l in range(len(low)):
+                                    if(llist[l]=='1'):
+                                        llist[l]='0'
+                                    else:
+                                        llist[l]='1'
+                                high=''.join(hlist)
+                                low=''.join(llist)
+                            # print(f"现在的high={high},low={low} 即{high+low}")
+                            # print('十进制为',int(high+low,2)*sign)
+                            rpy.append(int(high+low,2)*sign)
+
+                            # rpy.append(result)
+                            # rpy.append(int(high+low,2))
+                        roll=rpy[0]/100
+                        pitch=rpy[1]/100
+                        yaw=rpy[2]/10
+                        return [roll,pitch,yaw]
+                    # 检验和
+                    # checksum = frame[31]
+                    # # 检验
+                    # if sum(data)%256==checksum:
+                    #     # 高位aacx
+                    #     aacx=frame[3]*16+frame[4]
+                    #     aacy=frame[5]*16+frame[6]
+                    #     aacz=frame[7]*16+frame[8]
+                    #     gyrox=frame[9]*16+frame[10]
+                    #     gyroy= frame[11] * 16 + frame[12]
+                    #     gyroz = frame[13] * 16 + frame[14]
+                    #     # +7
+                    #
+                    #     print([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
+                    #     print(frame[23],frame[24])
+                    #     print(roll,pitch,yaw)
+                    #     # mpudata.append([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
 
 
                 else:
