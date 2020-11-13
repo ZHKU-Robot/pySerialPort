@@ -24,7 +24,7 @@
        </font>
       </property>
       <property name="title">
-       <string>CcBeta0.2</string>
+       <string>CcBeta0.3</string>
       </property>
       <property name="flat">
        <bool>true</bool>
@@ -271,9 +271,9 @@
         <property name="currentIndex">
          <number>1</number>
         </property>
-        <widget class="QWidget" name="tab_2">
+        <widget class="QWidget" name="sendAccTab">
          <attribute name="title">
-          <string>发射和接收爱心射线(づ￣3￣)づ╭❤～</string>
+          <string>串口收发区</string>
          </attribute>
          <layout class="QVBoxLayout" name="verticalLayout_7">
           <item>
@@ -727,9 +727,9 @@ p, li { white-space: pre-wrap; }
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="tab">
+        <widget class="QWidget" name="mcuTab">
          <attribute name="title">
-          <string>看看我的爱心光波</string>
+          <string>MPU8050可视化</string>
          </attribute>
          <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="3,3">
           <item>
@@ -867,6 +867,16 @@ p, li { white-space: pre-wrap; }
            </layout>
           </item>
          </layout>
+        </widget>
+        <widget class="QWidget" name="lcdTab">
+         <attribute name="title">
+          <string>LCD显示</string>
+         </attribute>
+        </widget>
+        <widget class="QWidget" name="tab">
+         <attribute name="title">
+          <string>ADC转换</string>
+         </attribute>
         </widget>
        </widget>
       </item>
