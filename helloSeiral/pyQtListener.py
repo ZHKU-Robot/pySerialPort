@@ -33,6 +33,5 @@ class Listener():
                 elif(this.self.tab == 1):
                     if(type(this.self.data)==UnicodeDecodeError):
                         this.self.painterTextBrowser.append("error.."+str (this.self.data))
-
                     else:
                         this.self.lcdNumber.display(str(this.self.lcdNumber.intValue() + len(this.self.data)))

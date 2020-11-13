@@ -77,7 +77,11 @@ class Signal():
                     # self.timer1=QTimer(self)
                     # self.timer1.timeout.connect(self.getMCU8050Data)
                     # self.timer1.start(50)
-                    threading.Thread(target=this.self.getMCU8050Data).start()
+                    if this.self.getMCUThread.is_alive():
+                        pass
+                    else:
+                        this.self.getMCUThread = threading.Thread(target=this.self.getMCU8050Data)
+                        this.self.getMCUThread.start()
                     # QMessageBox.warning(self, '串口未打开', '串口未打开ε＝ε＝ε＝(#>д<)ﾉ无法绘图')
                 else:
                     if (not this.self.open):

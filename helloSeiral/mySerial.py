@@ -1,11 +1,9 @@
+import numpy as np
 import serial  # 导入模块
 import serial.tools.list_ports
 import threading
 import time
-
-
 # 返回 成功读入的字节数
-
 def checkPorts():
     return [sp.device for sp in serial.tools.list_ports.comports()]
 
@@ -178,22 +176,20 @@ class Port:
             except Exception as e:
                 return e
 
-            frames=frames[find:find+32]
+            # frames=frames[find:find+32]
             frameLeng=32
             framesNum=int(len(frames)/frameLeng)
-
-            frameList=[[bin(int('0x'+j,16)) for j in frames[i*32:i*32+32]] for i in range(framesNum)][:frameLeng]
-            # mpudata=[]
+            frameList=[[bin(int('0x'+j,16)) for j in frames[i*32:i*32+32]] for i in range(framesNum)]
             flag= bin(int('0xaf',16))
-
+            rpy = [0, 0, 0]
             for frame in frameList:
-                # print(frame[21:27])
                 if (frame[1] ==flag):  # 对应usart1_report_imu
                     #计算检验位
                     checksum = int(frame[31],2)
                     data=sum([int(i,2) for i in frame[:31]])
                     if data% 256 == checksum:
-                        rpy=[]
+
+                        index=0
                         for i in range(21, 27, 2):
                             sign=1
                             low=frame[i+1][2:]
@@ -218,16 +214,14 @@ class Port:
                                         llist[l]='1'
                                 high=''.join(hlist)
                                 low=''.join(llist)
-                            # print(f"现在的high={high},low={low} 即{high+low}")
-                            # print('十进制为',int(high+low,2)*sign)
-                            rpy.append(int(high+low,2)*sign)
+                            rpy[index]+=int(high+low,2)*sign
+                            index+=1
 
-                            # rpy.append(result)
-                            # rpy.append(int(high+low,2))
-                        roll=rpy[0]/100
-                        pitch=rpy[1]/100
-                        yaw=rpy[2]/10
-                        return [roll,pitch,yaw]
+            data=list(np.divide(rpy[:2],[framesNum*100]))
+            data.append(rpy[2]/(10*framesNum))
+            return data
+        else:
+            return Exception("MPU frames为空")
                     # 检验和
                     # checksum = frame[31]
                     # # 检验
@@ -247,8 +241,7 @@ class Port:
                     #     # mpudata.append([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
 
 
-                else:
-                    pass
+
             # return mpudata
             pass
     def readline(self, options="text"):
