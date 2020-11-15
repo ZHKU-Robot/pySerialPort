@@ -169,57 +169,62 @@ class Port:
         # 3到30是数据,刚好0~27 28个数据, 现在只有24个数据被使用,剩余的是0
         #frame是32的倍数
         #如果不是88则丢弃
-        # print(frames)
         if frames!=[]:
-            try:
-                find=frames.index('88')
-            except Exception as e:
-                return e
+            if not issubclass(type(frames),Exception):
+                try:
+                    find=frames.index('88')
+                except Exception as e:
+                    return Exception(str(e)+"..没有检测到MCU数据帧头88,建议查看一下数据帧是不是正确的")
 
-            # frames=frames[find:find+32]
-            frameLeng=32
-            framesNum=int(len(frames)/frameLeng)
-            frameList=[[bin(int('0x'+j,16)) for j in frames[i*32:i*32+32]] for i in range(framesNum)]
-            flag= bin(int('0xaf',16))
-            rpy = [0, 0, 0]
-            for frame in frameList:
-                if (frame[1] ==flag):  # 对应usart1_report_imu
-                    #计算检验位
-                    checksum = int(frame[31],2)
-                    data=sum([int(i,2) for i in frame[:31]])
-                    if data% 256 == checksum:
+                frames=frames[find:]
 
-                        index=0
-                        for i in range(21, 27, 2):
-                            sign=1
-                            low=frame[i+1][2:]
-                            high=frame[i][2:]
+                if (len(frames)<32):
+                    return Exception("数据帧格式错误,必须为32整数")
+                frameLeng=32
+                framesNum=int(len(frames)/frameLeng)
+                frameList=[[bin(int('0x'+j,16)) for j in frames[i*32:i*32+32]] for i in range(framesNum)]
+                flag= bin(int('0xaf',16))
+                rpy = [0, 0, 0]
+                for frame in frameList:
+                    if (frame[1] ==flag):  # 对应usart1_report_imu
+                        #计算检验位
+                        checksum = int(frame[31],2)
+                        data=sum([int(i,2) for i in frame[:31]])
+                        if data% 256 == checksum:
 
-                            while(len(low)<8):
-                                low='0'+low
-                            # print(f"如今的high={high} low={low} ")
-                            if(high[0]=='1' and len(high)==8):
-                                hlist=list(high)
-                                llist=list(low)
-                                sign=-1
-                                for h in range(len(high)):
-                                    if(high[h]=='1'):
-                                        hlist[h]='0'
-                                    else:
-                                        hlist[h]='1'
-                                for l in range(len(low)):
-                                    if(llist[l]=='1'):
-                                        llist[l]='0'
-                                    else:
-                                        llist[l]='1'
-                                high=''.join(hlist)
-                                low=''.join(llist)
-                            rpy[index]+=int(high+low,2)*sign
-                            index+=1
+                            index=0
+                            for i in range(21, 27, 2):
+                                sign=1
+                                low=frame[i+1][2:]
+                                high=frame[i][2:]
 
-            data=list(np.divide(rpy[:2],[framesNum*100]))
-            data.append(rpy[2]/(10*framesNum))
-            return data
+                                while(len(low)<8):
+                                    low='0'+low
+                                # print(f"如今的high={high} low={low} ")
+                                if(high[0]=='1' and len(high)==8):
+                                    hlist=list(high)
+                                    llist=list(low)
+                                    sign=-1
+                                    for h in range(len(high)):
+                                        if(high[h]=='1'):
+                                            hlist[h]='0'
+                                        else:
+                                            hlist[h]='1'
+                                    for l in range(len(low)):
+                                        if(llist[l]=='1'):
+                                            llist[l]='0'
+                                        else:
+                                            llist[l]='1'
+                                    high=''.join(hlist)
+                                    low=''.join(llist)
+                                rpy[index]+=int(high+low,2)*sign
+                                index+=1
+
+                data=list(np.divide(rpy[:2],[framesNum*100]))
+                data.append(rpy[2]/(10*framesNum))
+                return data
+            else:
+                return Exception("frames 犯病了,原因是"+str(frames))
         else:
             return Exception("MPU frames为空")
                     # 检验和
@@ -239,11 +244,6 @@ class Port:
                     #     print(frame[23],frame[24])
                     #     print(roll,pitch,yaw)
                     #     # mpudata.append([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
-
-
-
-            # return mpudata
-            pass
     def readline(self, options="text"):
         if(self.ser.is_open):
             if options == "hex":
@@ -267,12 +267,19 @@ class Port:
         if(self.ser.is_open):
             if options == "hex":
                 s=self.ser.read(num).hex()
-                return [s[i:i+2] for i in range(0,len(s),2)]
+                if s!=[]:
+                    return [s[i:i+2] for i in range(0,len(s),2)]
+                else:
+                    return Exception("艹,这是一个空帧")
             elif options == "text":
                 try:
-                    return self.ser.read(num).decode(self.decoding)
+                    t=self.ser.read(num).decode(self.decoding)
+                    if t!='':
+                        return t
+                    else:
+                        return Exception("空空空数据")
                 except Exception as e:
-                    return e
+                    return Exception("text出现了什么问题呢?"+str(e))
 
             elif options == "all":
                 pass
@@ -283,13 +290,16 @@ class Port:
 
     def getWholeData(self, options='text'):
         if(self.ser.is_open):
-            time.sleep(0.1)
+            """很重要!!!"""
+            time.sleep(0.05)
             try:
-                # print(self.ser.in_waiting)
-                self.wholeData = self.readData(self.ser.in_waiting, options=options)
-            except:
-                Exception("串口已关闭,你在读nm呢")
-            # print(self.wholeData)
+                if self.ser.in_waiting>0:
+                    self.wholeData = self.readData(self.ser.in_waiting, options=options)
+                else:
+                    self.wholeData = []
+
+            except Exception as e:
+                print(e)
             return self.wholeData
         else:
             return Exception("串口已关闭,你在读nm呢")
@@ -297,8 +307,6 @@ class Port:
         #priont("-------- start hanging to read data -------- ")
         while(self.hang):
             self.getWholeData(options)
-
-
 
 
     def writeData(self, string: str) -> int:

@@ -1,37 +1,57 @@
 import time
 
 
-class Listener():
-    def __init__(this,self):
-        this.self=self
-    def autoSend(this, itv):
-        this.self.autosend = this.self.autoCheckBox.isChecked()
-        if (this.self.autosend):
-            this.self.debugtextBrowser.append("已开启 自动 发送 模式 ")
+"""
+出现错误后重试的时间
+"""
+BREAK=3
+
+class MainWindowListener():
+    @staticmethod
+    def autoSendListener(self, inv):
+        self.autoSendFlag = self.autoCheckBox.isChecked()
+        if (self.autoSendFlag):
+            self.debugtextBrowser.append("已开启 自动 发送 模式 ")
         else:
-            this.self.debugtextBrowser.append("已关闭 自动 发送 模式 ")
-        while (this.self.autosend):
-            this.self.sendData2MyPort()
-            time.sleep(int(itv) / 1000)
+            self.debugtextBrowser.append("已关闭 自动 发送 模式 ")
+
+        while (self.autoSendFlag):
+            self.action.sendData2MyPort(self)
+            time.sleep(int(inv) / 1000)
     # TODO 待改进
+    @staticmethod
+    def acceptedDataListener(self):
 
-    def listenAcceptedData(this):
         print("--------已经开始自动接收数据-------- ")
-        this.self.acceptedTextBrowser.textChanged.connect(this.self.signals.acceptedTextBrowserSignals)
+        self.acceptedTextBrowser.textChanged.connect(self.signals.acceptedTextBrowserSignals)
 
-        while (this.self.open):
-            if this.self.acceptedData==2:
-                mode=[k for k, v in this.self.opDict.items() if v == True][0]
-                this.self.data = this.self.myPort.getWholeData(mode)
-                # time.sleep(this.self.interval)
-                if (this.self.tab == 0):
-                    if(type(this.self.data)==UnicodeDecodeError):
-                        this.self.debugtextBrowser.append("error.."+str (this.self.data))
+        while (self.open and self.acceptedData):
+            mode=[k for k, v in self.opDict.items() if v == True][0]
+            self.data = self.myPort.getWholeData(mode)
+            if self.data!=[]:
+                if (issubclass(type(self.data) ,Exception)):
+                    pass
+                    self.debugtextBrowser.append("error.." + str(self.data))
+                    self.painterTextBrowser.append("error.." + str(self.data))
+                else:
+                    self.acceptedTextBrowser.append(str(self.data))
+                    self.lcdNumber.display(str(self.lcdNumber.intValue() + len(self.data)))
+    @staticmethod
+    def getMCU8050DataListener(self):
+        self.painterTextBrowser.append('开启MCU8050数据流监听')
+        while self.open and self.acceptedData:
+            if self.data!=[]:
+                self.mpuData = self.myPort.decodeMPU6050(self.data)
+                if (issubclass(type(self.mpuData),Exception)):
+                    self.painterTextBrowser.append('mpudata错误'+str(self.mpuData))
+                    time.sleep(BREAK)
+                else:
+                    if (self.draw):
+                        self.action.drawFigure(self)
+                        self.action.draw3D(self)
                     else:
-                        this.self.acceptedTextBrowser.append(str(this.self.data))
-                        this.self.lcdNumber.display(str(this.self.lcdNumber.intValue() + len(this.self.data)))
-                elif(this.self.tab == 1):
-                    if(type(this.self.data)==UnicodeDecodeError):
-                        this.self.painterTextBrowser.append("error.."+str (this.self.data))
-                    else:
-                        this.self.lcdNumber.display(str(this.self.lcdNumber.intValue() + len(this.self.data)))
+                        self.painterTextBrowser.append('绘图已中断,开始等待')
+                        time.sleep(BREAK)
+            else:
+                self.painterTextBrowser.append('数据流是空,等待3s后再次尝试')
+                time.sleep(BREAK)
