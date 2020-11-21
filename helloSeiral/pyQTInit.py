@@ -1,6 +1,6 @@
 import threading
-from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QIcon, QVector3D, QPixmap, QImage
+from PyQt5.QtCore import QTimer, QPoint
+from PyQt5.QtGui import QIcon, QVector3D, QPixmap, QImage, QPainter, QPen, QColor
 from PyQt5.QtWidgets import QMainWindow
 from mainwindow import Ui_MainWindow  # 加载我们的布局
 from pyQtErrorMessage import ErrorMessage
@@ -130,6 +130,29 @@ class PyqtMainWindowIntialization(QMainWindow, Ui_MainWindow):
 
     def initSingals(self):
         self.signals = MainWindowSignal
+    def initLCD(self):
+        frames=self.myPort.readLCD()
+        self.lcdFigure=QPainter()
+        self.lcdFigure.setRenderHint(QPainter.Antialiasing, True);
+        #每一行由06隔开
+        def list_split(items, n):
+            return [items[i:i + n] for i in range(0, len(items), n)]
+        for yIndex,yframe in enumerate(list_split(frames,964)):
+            yframeLeng=len(yframe)
+            while len(yframe)<964:
+                yframe+=['00']
+            for xIndex in range(2,yframeLeng):
+                if xIndex==481:
+                    break
+                try:
+                    low=int(yframe[xIndex],16)
+                    high=int(yframe[xIndex+480],16)
+                    self.lcdFigure.setPen(QPen(QColor(0,high,low),1))
+                    self.lcdFigure.drawPoint(QPoint(xIndex,yIndex))
+                except Exception as e:
+                    print("不知道咋回事",e,"反正就是好像越界了,看看先",len(frames),xIndex+480)
+
+        self.horizontalLayout_20.addWidget(self.lcdFigure)
 
     def initFigure(self):
         self.getMCUThread = threading.Thread(target=self.listener.getMCU8050DataListener,args=[self])
@@ -217,6 +240,7 @@ class PyqtMainWindowIntialization(QMainWindow, Ui_MainWindow):
         # self.qbtn = QPushButton('Quit', self)
         # self.qbtn.clicked.connect(QCoreApplication.instance().quit)
         #
+        self.initLcdBtn.clicked.connect(self.initLCD)
         self.checkBtn.setStatusTip('Check port')
         self.checkBtn.clicked.connect(lambda :self.signals.freshComboxSignals(self))
 

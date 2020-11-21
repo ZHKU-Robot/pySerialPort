@@ -244,6 +244,85 @@ class Port:
                     #     print(frame[23],frame[24])
                     #     print(roll,pitch,yaw)
                     #     # mpudata.append([aacx,aacy,aacz,gyrox,gyroy,gyroz,roll,pitch,yaw])
+    @staticmethod
+    def decodeLcd():
+        def decode_RLE(inbuf,inSize):
+            src=inbuf;
+            srcIndex=0
+            with open('decoded.txt','w+')as f :
+                while(srcIndex<inSize):
+                    sign=src[srcIndex]
+                    srcIndex+=1
+                    count=abs(sign)-0x80 if sign<0 else sign
+                    # print(count,sign)
+                    if(sign<0):
+                        # print('重复的有',count,src[srcIndex])
+                        for i in range(count):
+                            f.write(hex(abs(src[srcIndex]))[2:])
+                        srcIndex+=1
+                    else:
+                        # print('不重复的有', count)
+                        for i in range(count):
+                            # print(src[srcIndex])
+                            h=hex(abs(src[srcIndex]))[2:]
+                            if len(h)==1:
+                                h='0'+h
+                            if sign==4 and h in ['01','02'] :
+                                pass
+                            elif sign==2 and h in ['05','06','03','04'] :
+                                pass
+                            else:
+                                f.write(h)
+                            srcIndex+=1;
+
+        with open('lcd.txt') as f:
+            frames=f.read()
+        print(frames)
+        decodeFrames=[]
+        for i in range(0, len(frames), 2):
+            #是负的,代表要continue
+            a=int(frames[i:i+2],16)
+            if a>0x80:
+                decodeFrames.append(-a)
+            else:
+                decodeFrames.append(a)
+        decodeFrames.append(0)
+        #7042
+        decode_RLE(decodeFrames,len(decodeFrames))
+
+
+    def readLCD(self):
+        self.wholeData=''
+        self.byteCount=0
+        self.timecount=0
+        self.lcdFrames=""
+        while self.ser.in_waiting == 0:
+            pass
+        print('开始录入数据')
+        with open('lcd.txt','w+') as f:
+            start =  self.ser.read(self.ser.in_waiting).hex()
+            time1=time.time()
+            self.lcdFrames+=start
+            self.byteCount += len(self.lcdFrames)
+            f.write(self.lcdFrames)
+            try:
+                while 1:
+                    if self.ser.in_waiting > 0:
+                        self.wholeData =self.ser.read(self.ser.in_waiting).hex()
+                        # print(self.wholeData)
+                        self.byteCount += len(self.wholeData)
+                        f.write(self.wholeData)
+                        if self.wholeData.rfind('0304')!=-1:
+                            time2 = time.time()
+                            print('已传输完毕,用时{}s,总数据量为{},速度为{}kb/s'.format(time2-time1,self.byteCount,self.byteCount/(time2-time1)/1024))
+                            self.ser.close()
+                            break
+                    else:
+                        self.wholeData = ""
+            except Exception as e:
+                print(e)
+
+
     def readline(self, options="text"):
         if(self.ser.is_open):
             if options == "hex":
@@ -288,6 +367,7 @@ class Port:
         else:
             return Exception("串口已关闭,你在读nm呢")
 
+
     def getWholeData(self, options='text'):
         if(self.ser.is_open):
             """很重要!!!"""
@@ -295,18 +375,23 @@ class Port:
             try:
                 if self.ser.in_waiting>0:
                     self.wholeData = self.readData(self.ser.in_waiting, options=options)
+                    print(se)
+                    #等待开始
                 else:
                     self.wholeData = []
 
             except Exception as e:
-                print(e)
+                return e
             return self.wholeData
         else:
             return Exception("串口已关闭,你在读nm呢")
     def hangThread2ReadData(self,options):
-        #priont("-------- start hanging to read data -------- ")
+        print("-------- start hanging to read data -------- ")
         while(self.hang):
             self.getWholeData(options)
+
+
+
 
 
     def writeData(self, string: str) -> int:
